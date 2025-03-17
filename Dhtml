@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,11 +15,25 @@
     </div>
 
     <script>
-        // Get data from localStorage
-        let formData = JSON.parse(localStorage.getItem("formData"));
+        // Function to get URL parameters
+        function getQueryParams() {
+            let params = new URLSearchParams(window.location.search);
+            return {
+                first_name: params.get("first_name"),
+                last_name: params.get("last_name"),
+                uid: params.get("uid"),
+                department: params.get("department"),
+                dob: params.get("dob"),
+                manager: params.get("manager"),
+                phone: params.get("phone")
+            };
+        }
+
+        // Get form data from URL
+        let formData = getQueryParams();
 
         // Display data
-        if (formData) {
+        if (formData.first_name) {
             document.getElementById("display-data").innerHTML = `
                 <p><strong>First Name:</strong> ${formData.first_name}</p>
                 <p><strong>Last Name:</strong> ${formData.last_name}</p>
