@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submitted Data</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="form-container">
+        <h2>Submitted Employee Details</h2>
+        <div id="display-data"></div>
+        <a href="index.html"><button>Back to Form</button></a>
+    </div>
+
+    <script>
+        // Get data from localStorage
+        let formData = JSON.parse(localStorage.getItem("formData"));
+
+        // Display data
+        if (formData) {
+            document.getElementById("display-data").innerHTML = `
+                <p><strong>First Name:</strong> ${formData.first_name}</p>
+                <p><strong>Last Name:</strong> ${formData.last_name}</p>
+                <p><strong>UID:</strong> ${formData.uid}</p>
+                <p><strong>Department:</strong> ${formData.department}</p>
+                <p><strong>Date of Birth:</strong> ${formData.dob}</p>
+                <p><strong>Manager Name:</strong> ${formData.manager}</p>
+                <p><strong>Phone Number:</strong> ${formData.phone}</p>
+            `;
+        } else {
+            document.getElementById("display-data").innerHTML = "<p>No data found.</p>";
+        }
+    </script>
+</body>
+</html>
