@@ -1,0 +1,40 @@
+!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Form</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="form-container">
+        <h2>Employee Details Form</h2>
+        <form id="employee-form">
+            <label for="first-name">First Name:</label>
+            <input type="text" id="first-name" name="first_name" required>
+
+            <label for="last-name">Last Name:</label>
+            <input type="text" id="last-name" name="last_name" required>
+
+            <label for="uid">Employee UID:</label>
+            <input type="text" id="uid" name="uid" pattern="[A-Za-z]{2}\d{5}" title="UID must start with two letters followed by exactly 5 digits (e.g., hg54321)" required>
+
+            <label for="department">Department:</label>
+            <input type="text" id="department" name="department" required>
+
+            <label for="dob">Date of Birth:</label>
+            <input type="date" id="dob" name="dob" required>
+
+            <label for="manager">Manager Name:</label>
+            <input type="text" id="manager" name="manager" required>
+
+            <label for="phone">Phone Number:</label>
+            <input type="text" id="phone" name="phone" pattern="\d{10}" title="Phone number must be exactly 10 digits" required>
+
+            <button type="submit">Download File</button>
+        </form>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
