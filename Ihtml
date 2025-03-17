@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Form</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="form-container">
         <h2>Employee Details Form</h2>
-        <form id="employee-form" action="display.html" method="GET">
+        <form id="employee-form">
             <label for="first-name">First Name:</label>
             <input type="text" id="first-name" name="first_name" required>
 
@@ -17,8 +17,8 @@
             <input type="text" id="last-name" name="last_name" required>
 
             <label for="uid">Employee UID:</label>
-            <input type="text" id="uid" name="uid" pattern="[A-Za-z]{2}\d{5}" 
-                   title="UID must start with two letters followed by exactly 5 digits (e.g., hg54321)" required>
+            <input type="text" id="uid" name="uid" pattern="[A-Za-z]\d{5}" 
+                   title="UID must start with a letter followed by exactly 5 digits (e.g., A12345)" required>
 
             <label for="department">Department:</label>
             <input type="text" id="department" name="department" required>
@@ -32,8 +32,29 @@
             <label for="phone">Phone Number:</label>
             <input type="text" id="phone" name="phone" pattern="\d{10}" title="Phone number must be exactly 10 digits" required>
 
-            <button type="submit">Submit</button>
+            <button type="button" onclick="saveEmployeeData()">Submit</button>
         </form>
     </div>
+
+    <script>
+        function saveEmployeeData() {
+            const formData = {
+                firstName: document.getElementById('first-name').value,
+                lastName: document.getElementById('last-name').value,
+                uid: document.getElementById('uid').value,
+                department: document.getElementById('department').value,
+                dob: document.getElementById('dob').value,
+                manager: document.getElementById('manager').value,
+                phone: document.getElementById('phone').value
+            };
+
+            const data = `First Name: ${formData.firstName}\nLast Name: ${formData.lastName}\nUID: ${formData.uid}\nDepartment: ${formData.department}\nDate of Birth: ${formData.dob}\nManager: ${formData.manager}\nPhone: ${formData.phone}`;
+            const blob = new Blob([data], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'employee_data.txt';
+            link.click();
+        }
+    </script>
 </body>
 </html>
