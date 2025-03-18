@@ -58,3 +58,50 @@
     </script>
 </body>
 </html>
+   <script>
+        document.getElementById('employee-form').addEventListener('submit', function(event) {
+            event.preventDefault(); // Stop form submission
+            
+            const phoneInput = document.getElementById('phone').value;
+            const uidInput = document.getElementById('uid').value;
+            
+            const phonePattern = /^\d{10}$/;
+            const uidPattern = /^[A-Za-z]\d{5}$/;
+
+            if (!phonePattern.test(phoneInput)) {
+                alert("Phone number must be exactly 10 digits.");
+                return;
+            }
+
+            if (!uidPattern.test(uidInput)) {
+                alert("UID must start with a letter followed by exactly 5 digits (e.g., A12345).");
+                return;
+            }
+
+            // If validation passes, generate and download file
+            saveEmployeeData();
+        });
+
+        function saveEmployeeData() {
+            const formData = {
+                firstName: document.getElementById('first-name').value,
+                lastName: document.getElementById('last-name').value,
+                uid: document.getElementById('uid').value,
+                department: document.getElementById('department').value,
+                dob: document.getElementById('dob').value,
+                manager: document.getElementById('manager').value,
+                phone: document.getElementById('phone').value
+            };
+
+            const data = `First Name: ${formData.firstName}\nLast Name: ${formData.lastName}\nUID: ${formData.uid}\nDepartment: ${formData.department}\nDate of Birth: ${formData.dob}\nManager: ${formData.manager}\nPhone: ${formData.phone}`;
+            
+            // Creating and downloading the file
+            const blob = new Blob([data], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'employee_data.txt';
+            document.body.appendChild(link); // Append to body (required for Firefox)
+            link.click();
+            document.body.removeChild(link); // Cleanup
+        }
+    </script>
