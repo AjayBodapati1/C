@@ -1,0 +1,6 @@
+mvn install:install-file \
+  -Dfile=path/to/ojdbc8.jar \
+  -DgroupId=com.oracle.database.jdbc \
+  -DartifactId=ojdbc8 \
+  -Dversion=19.3.0.0 \
+  -Dpackaging=jar
