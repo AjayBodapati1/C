@@ -1,19 +1,7 @@
-<dependency>
-  <groupId>com.h2database</groupId>
-  <artifactId>h2</artifactId>
-  <scope>runtime</scope>
-</dependency>
-
-
-spring.datasource.url=jdbc:h2:mem:testdb
-spring.datasource.driver-class-name=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
-
-spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-
-# Optional: enable H2 web console
-spring.h2.console.enabled=true
-spring.h2.console.path=/h2-console
+"styles": [
+  "node_modules/bootstrap/dist/css/bootstrap.min.css"
+],
+"scripts": [
+  "node_modules/bootstrap/dist/js/bootstrap.min.js",
+  "node_modules/jquery/dist/jquery.min.js"
+]
