@@ -1,29 +1,24 @@
-if (line.length() >= 22 && line.contains(":")) {
-    // Extract first 22 characters and map them
-    String typeNature = line.substring(0, 2).trim();
-    String siteCode = line.substring(2, 8).trim();
-    String applicationCode = line.substring(8, 16).trim();
-    String instrumentCode = line.substring(16, 22).trim();
+while ((line = reader.readLine()) != null) {
+    if (line.length() >= 22) {
+        Map<String, String> row = new LinkedHashMap<>();
 
-    // Parse the remaining part of the line (after first 22 chars)
-    String[] segments = line.substring(22).split("\\*");
-    Map<String, String> row = new LinkedHashMap<>();
+        // Extract fixed-width fields
+        row.put("Type Nature", line.substring(0, 2));
+        row.put("Site Code", line.substring(2, 8));
+        row.put("Application Code", line.substring(8, 16));
+        row.put("Instrument Code", line.substring(16, 22));
 
-    // Add extracted fields first
-    row.put("TypeNature", typeNature);
-    row.put("SiteCode", siteCode);
-    row.put("ApplicationCode", applicationCode);
-    row.put("InstrumentCode", instrumentCode);
+        // Parse the rest of the line (after 22 characters)
+        String restOfLine = line.substring(22);
+        String[] segments = restOfLine.split("\\*");
 
-    // Parse rest of the key:value segments
-    for (String segment : segments) {
-        String[] kv = segment.split(":", 2);
-        if (kv.length == 2) {
-            row.put(kv[0].trim(), kv[1].trim());
+        for (String segment : segments) {
+            String[] kv = segment.split(":", 2);
+            if (kv.length == 2) {
+                row.put(kv[0].trim(), kv[1].trim());
+            }
         }
-    }
 
-    if (!row.isEmpty()) {
         records.add(row);
     }
 }
