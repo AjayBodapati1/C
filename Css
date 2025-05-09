@@ -9,3 +9,81 @@ public class DesisToCsvApplication {
         SpringApplication.run(DesisToCsvApplication.class, args);
     }
 }
+
+
+
+package com.example.desis_to_csv;
+
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.io.*;
+import java.util.*;
+
+@RestController
+public class FileConversionController {
+
+    @GetMapping("/download-csv")
+    public ResponseEntity<Resource> convertDesisToCsvAndDownload() throws IOException {
+
+        String inputFilePath = "C:/downloads/file.qso";
+        String outputFilePath = "C:/downloads/output.csv";
+
+        List<Map<String, String>> records = new ArrayList<>();
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFilePath))) {
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                if (line.contains(":")) {
+                    String[] segments = line.split("\\*");
+                    Map<String, String> row = new LinkedHashMap<>();
+
+                    for (String segment : segments) {
+                        String[] kv = segment.split(":", 2);
+                        if (kv.length == 2) {
+                            row.put(kv[0].trim(), kv[1].trim());
+                        }
+                    }
+
+                    if (!row.isEmpty()) {
+                        records.add(row);
+                    }
+                }
+            }
+        }
+
+        // Collect headers
+        Set<String> headersSet = new LinkedHashSet<>();
+        for (Map<String, String> map : records) {
+            headersSet.addAll(map.keySet());
+        }
+        List<String> headers = new ArrayList<>(headersSet);
+
+        // Write CSV
+        try (PrintWriter writer = new PrintWriter(new FileWriter(outputFilePath))) {
+            writer.println(String.join(",", headers));
+            for (Map<String, String> map : records) {
+                List<String> values = new ArrayList<>();
+                for (String header : headers) {
+                    values.add(map.getOrDefault(header, ""));
+                }
+                writer.println(String.join(",", values));
+            }
+        }
+
+        // Return downloadable file
+        File csvFile = new File(outputFilePath);
+        InputStreamResource resource = new InputStreamResource(new FileInputStream(csvFile));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=output.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(resource);
+    }
+}
