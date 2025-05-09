@@ -18,8 +18,6 @@ public class FileConversionController {
     public ResponseEntity<Resource> convertDesisToCsvAndDownload() throws IOException {
 
         String inputFilePath = "C:/downloads/file.qso";
-        String outputFilePath = "C:/downloads/output.csv";
-
         List<Map<String, String>> records = new ArrayList<>();
 
         // Read and parse DESIS format
@@ -52,9 +50,9 @@ public class FileConversionController {
         }
         List<String> headers = new ArrayList<>(headersSet);
 
-        // Write to CSV
-        File csvFile = new File(outputFilePath);
-        try (PrintWriter writer = new PrintWriter(new FileWriter(csvFile))) {
+        // Write CSV to memory
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        try (PrintWriter writer = new PrintWriter(byteArrayOutputStream)) {
             writer.println(String.join(",", headers));
             for (Map<String, String> map : records) {
                 List<String> values = new ArrayList<>();
@@ -65,22 +63,13 @@ public class FileConversionController {
             }
         }
 
-        // Ensure file exists
-        if (!csvFile.exists()) {
-            throw new FileNotFoundException("CSV file was not created.");
-        }
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+        InputStreamResource resource = new InputStreamResource(inputStream);
 
-        // Prepare response
-        InputStreamResource resource = new InputStreamResource(new FileInputStream(csvFile));
-        ResponseEntity<Resource> response = ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=output.csv")
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=outputpath.csv")
                 .contentType(MediaType.parseMediaType("text/csv"))
-                .contentLength(csvFile.length())
+                .contentLength(byteArrayOutputStream.size())
                 .body(resource);
-
-        // Schedule deletion after JVM exits (optional safety)
-        csvFile.deleteOnExit();
-
-        return response;
     }
 }
