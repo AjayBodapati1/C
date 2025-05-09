@@ -87,3 +87,34 @@ public class FileConversionController {
                 .body(resource);
     }
 }
+
+
+String line;
+
+while ((line = reader.readLine()) != null) {
+    Map<String, String> row = new LinkedHashMap<>();
+
+    if (line.length() >= 22) {
+        // Extract fixed-width fields
+        row.put("TypeNature", line.substring(0, 2).trim());
+        row.put("SiteCode", line.substring(2, 8).trim());
+        row.put("ApplicationCode", line.substring(8, 16).trim());
+        row.put("InstrumentCode", line.substring(16, 22).trim());
+
+        // Parse the rest
+        String remaining = line.substring(22).trim();
+        if (remaining.contains(":")) {
+            String[] segments = remaining.split("\\*");
+            for (String segment : segments) {
+                String[] kv = segment.split(":", 2);
+                if (kv.length == 2) {
+                    row.put(kv[0].trim(), kv[1].trim());
+                }
+            }
+        } else {
+            row.put("RawContent", remaining); // If not key:value
+        }
+
+        records.add(row);
+    }
+}
