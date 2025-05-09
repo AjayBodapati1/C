@@ -1,41 +1,29 @@
-package com.example.desis_to_csv;
+package com.example.desis_to_csv.service;
 
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.util.*;
 
-@RestController
-public class FileConversionController {
+@Service
+public class DesisToCsvService {
 
-    @GetMapping("/download-csv")
-    public ResponseEntity<Resource> convertDesisToCsvAndDownload() throws IOException {
-
-        String inputFilePath = "C:/downloads/file.qso";
+    public ByteArrayInputStream convertDesisToCsv(String inputFilePath) throws IOException {
         List<Map<String, String>> records = new ArrayList<>();
 
         // Read and parse DESIS format
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFilePath))) {
             String line;
-
             while ((line = reader.readLine()) != null) {
                 if (line.contains(":")) {
                     String[] segments = line.split("\\*");
                     Map<String, String> row = new LinkedHashMap<>();
-
                     for (String segment : segments) {
                         String[] kv = segment.split(":", 2);
                         if (kv.length == 2) {
                             row.put(kv[0].trim(), kv[1].trim());
                         }
                     }
-
                     if (!row.isEmpty()) {
                         records.add(row);
                     }
@@ -43,7 +31,7 @@ public class FileConversionController {
             }
         }
 
-        // Collect all possible headers
+        // Extract headers
         Set<String> headersSet = new LinkedHashSet<>();
         for (Map<String, String> map : records) {
             headersSet.addAll(map.keySet());
@@ -63,13 +51,45 @@ public class FileConversionController {
             }
         }
 
-        ByteArrayInputStream inputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
-        InputStreamResource resource = new InputStreamResource(inputStream);
+        return new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+    }
+}
+
+
+
+package com.example.desis_to_csv.controller;
+
+import com.example.desis_to_csv.service.DesisToCsvService;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.io.*;
+
+@RestController
+public class FileConversionController {
+
+    private final DesisToCsvService desisToCsvService;
+
+    public FileConversionController(DesisToCsvService desisToCsvService) {
+        this.desisToCsvService = desisToCsvService;
+    }
+
+    @GetMapping("/download-csv")
+    public ResponseEntity<Resource> downloadCsv() throws IOException {
+        String inputFilePath = "C:/downloads/file.qso";
+        String outputFilename = "OMR";
+
+        ByteArrayInputStream csvStream = desisToCsvService.convertDesisToCsv(inputFilePath);
+        InputStreamResource resource = new InputStreamResource(csvStream);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=outputpath.csv")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + outputFilename + ".csv")
                 .contentType(MediaType.parseMediaType("text/csv"))
-                .contentLength(byteArrayOutputStream.size())
                 .body(resource);
     }
 }
