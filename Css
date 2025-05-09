@@ -1,3 +1,5 @@
+package com.example.desis_to_csv;
+
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -8,63 +10,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.*;
 import java.util.*;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 @RestController
 public class FileConversionController {
 
     @GetMapping("/download-csv")
-    public ResponseEntity<Resource> convertMultipleDesisToCsvAndDownload() throws IOException {
+    public ResponseEntity<Resource> convertDesisToCsvAndDownload() throws IOException {
 
-        String[] inputPaths = {
-                "C:/downloads/file1.qso",
-                "C:/downloads/file2.qso"
-        };
+        String inputFilePath = "C:/downloads/file.qso";
+        String outputFilePath = "C:/downloads/output.csv";
 
-        String[] outputPaths = {
-                "C:/downloads/output1.csv",
-                "C:/downloads/output2.csv"
-        };
-
-        for (int i = 0; i < inputPaths.length; i++) {
-            convertSingleFile(inputPaths[i], outputPaths[i]);
-        }
-
-        // Create ZIP file
-        String zipFilePath = "C:/downloads/converted_files.zip";
-        try (FileOutputStream fos = new FileOutputStream(zipFilePath);
-             ZipOutputStream zos = new ZipOutputStream(fos)) {
-            for (String csvPath : outputPaths) {
-                File file = new File(csvPath);
-                try (FileInputStream fis = new FileInputStream(file)) {
-                    ZipEntry zipEntry = new ZipEntry(file.getName());
-                    zos.putNextEntry(zipEntry);
-
-                    byte[] buffer = new byte[1024];
-                    int len;
-                    while ((len = fis.read(buffer)) > 0) {
-                        zos.write(buffer, 0, len);
-                    }
-                }
-            }
-        }
-
-        // Return ZIP file as downloadable resource
-        File zipFile = new File(zipFilePath);
-        InputStreamResource resource = new InputStreamResource(new FileInputStream(zipFile));
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=converted_files.zip")
-                .contentType(MediaType.parseMediaType("application/zip"))
-                .body(resource);
-    }
-
-    private void convertSingleFile(String inputPath, String outputPath) throws IOException {
         List<Map<String, String>> records = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(inputPath))) {
+        // Read and parse DESIS format
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFilePath))) {
             String line;
+
             while ((line = reader.readLine()) != null) {
                 if (line.contains(":")) {
                     String[] segments = line.split("\\*");
@@ -84,13 +45,16 @@ public class FileConversionController {
             }
         }
 
+        // Collect all possible headers
         Set<String> headersSet = new LinkedHashSet<>();
         for (Map<String, String> map : records) {
             headersSet.addAll(map.keySet());
         }
         List<String> headers = new ArrayList<>(headersSet);
 
-        try (PrintWriter writer = new PrintWriter(new FileWriter(outputPath))) {
+        // Write to CSV
+        File csvFile = new File(outputFilePath);
+        try (PrintWriter writer = new PrintWriter(new FileWriter(csvFile))) {
             writer.println(String.join(",", headers));
             for (Map<String, String> map : records) {
                 List<String> values = new ArrayList<>();
@@ -100,5 +64,23 @@ public class FileConversionController {
                 writer.println(String.join(",", values));
             }
         }
+
+        // Ensure file exists
+        if (!csvFile.exists()) {
+            throw new FileNotFoundException("CSV file was not created.");
+        }
+
+        // Prepare response
+        InputStreamResource resource = new InputStreamResource(new FileInputStream(csvFile));
+        ResponseEntity<Resource> response = ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=output.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .contentLength(csvFile.length())
+                .body(resource);
+
+        // Schedule deletion after JVM exits (optional safety)
+        csvFile.deleteOnExit();
+
+        return response;
     }
 }
