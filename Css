@@ -1,7 +1,11 @@
-"styles": [
-  "node_modules/bootstrap/dist/css/bootstrap.min.css"
-],
-"scripts": [
-  "node_modules/bootstrap/dist/js/bootstrap.min.js",
-  "node_modules/jquery/dist/jquery.min.js"
-]
+package com.example.desis_to_csv;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class DesisToCsvApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(DesisToCsvApplication.class, args);
+    }
+}
