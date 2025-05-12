@@ -1,32 +1,109 @@
-// Match and count
-List<Map<String, String>> matchResults = new ArrayList<>();
-int matchedCount = 0, unmatchedCount = 0;
+package com.example.desis_to_csv.service;
 
-// Create a modifiable copy of file2Values
-List<String> remainingFile2Values = new ArrayList<>(file2Values);
+import org.springframework.stereotype.Service;
 
-for (String val1 : file1Values) {
-    boolean matched = false;
-    String matchedVal = "";
+import java.io.*;
+import java.util.*;
 
-    Iterator<String> iterator = remainingFile2Values.iterator();
-    while (iterator.hasNext()) {
-        String val2 = iterator.next();
-        if (val1.equals(val2)) {
-            matched = true;
-            matchedVal = val2;
-            iterator.remove(); // Remove matched value so it's not reused
-            break;
+@Service
+public class MatchingService {
+
+    public Map<String, Object> processAndMatchFiles(String file1Path, String file2Path) throws IOException {
+        List<String> file1Values = new ArrayList<>();
+        List<String> file2Values = new ArrayList<>();
+        int excludedCount = 0;
+
+        // Read file 1 and clean DESIS field 105 (with exclusion based on 820)
+        try (BufferedReader reader = new BufferedReader(new FileReader(file1Path))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) throw new IOException("File 1 is empty");
+            String[] headers = headerLine.split(",");
+            int field105Index = findFieldIndex(headers, "105");
+            int field820Index = findFieldIndex(headers, "820");
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] fields = line.split(",", -1);
+
+                if (field820Index >= 0 && field820Index < fields.length) {
+                    String field820Val = fields[field820Index].trim();
+                    if (field820Val.equals("ROBSIN") || field820Val.equals("BAIUAMDROB")) {
+                        excludedCount++;
+                        continue;
+                    }
+                }
+
+                if (field105Index >= 0 && field105Index < fields.length) {
+                    String value = fields[field105Index];
+                    value = value.replaceFirst("(?i)^PE@|^LND@", ""); // Clean PE@/LND@
+                    file1Values.add(value.trim());
+                }
+            }
         }
+
+        // Read file 2 for field 1005
+        try (BufferedReader reader = new BufferedReader(new FileReader(file2Path))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) throw new IOException("File 2 is empty");
+            String[] headers = headerLine.split(",");
+            int field1005Index = findFieldIndex(headers, "1005");
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] fields = line.split(",", -1);
+                if (field1005Index >= 0 && field1005Index < fields.length) {
+                    file2Values.add(fields[field1005Index].trim());
+                }
+            }
+        }
+
+        // One-to-one matching logic
+        List<Map<String, String>> matchResults = new ArrayList<>();
+        int matchedCount = 0, unmatchedCount = 0;
+
+        List<String> remainingFile2Values = new ArrayList<>(file2Values); // modifiable list
+
+        for (String val1 : file1Values) {
+            boolean matched = false;
+            String matchedVal = "";
+
+            Iterator<String> iterator = remainingFile2Values.iterator();
+            while (iterator.hasNext()) {
+                String val2 = iterator.next();
+                if (val1.equals(val2)) {
+                    matched = true;
+                    matchedVal = val2;
+                    iterator.remove(); // prevent reuse
+                    break;
+                }
+            }
+
+            Map<String, String> matchResult = new HashMap<>();
+            matchResult.put("file1Value", val1);
+            matchResult.put("file2Value", matched ? matchedVal : "");
+            matchResult.put("matchStatus", matched ? "Matched" : "Not Matched");
+
+            if (matched) matchedCount++;
+            else unmatchedCount++;
+
+            matchResults.add(matchResult);
+        }
+
+        // Final output
+        Map<String, Object> output = new HashMap<>();
+        output.put("matchedCount", matchedCount);
+        output.put("unmatchedCount", unmatchedCount);
+        output.put("excludedCount", excludedCount);
+        output.put("results", matchResults);
+        return output;
     }
 
-    Map<String, String> matchResult = new HashMap<>();
-    matchResult.put("file1Value", val1);
-    matchResult.put("file2Value", matched ? matchedVal : "");
-    matchResult.put("matchStatus", matched ? "Matched" : "Not Matched");
-
-    if (matched) matchedCount++;
-    else unmatchedCount++;
-
-    matchResults.add(matchResult);
+    private int findFieldIndex(String[] headers, String targetField) {
+        for (int i = 0; i < headers.length; i++) {
+            if (headers[i].trim().equals(targetField)) {
+                return i;
+            }
+        }
+        return -1;
+    }
 }
