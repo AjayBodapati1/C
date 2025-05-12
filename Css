@@ -1,8 +1,32 @@
-if (field105Index >= 0 && field105Index < fields.length) {
-    String value = fields[field105Index];
-    int atIndex = value.indexOf("@");
-    if (atIndex != -1 && atIndex < value.length() - 1) {
-        value = value.substring(atIndex + 1); // Get everything after '@'
+// Match and count
+List<Map<String, String>> matchResults = new ArrayList<>();
+int matchedCount = 0, unmatchedCount = 0;
+
+// Create a modifiable copy of file2Values
+List<String> remainingFile2Values = new ArrayList<>(file2Values);
+
+for (String val1 : file1Values) {
+    boolean matched = false;
+    String matchedVal = "";
+
+    Iterator<String> iterator = remainingFile2Values.iterator();
+    while (iterator.hasNext()) {
+        String val2 = iterator.next();
+        if (val1.equals(val2)) {
+            matched = true;
+            matchedVal = val2;
+            iterator.remove(); // Remove matched value so it's not reused
+            break;
+        }
     }
-    // Now 'value' holds the cleaned string
+
+    Map<String, String> matchResult = new HashMap<>();
+    matchResult.put("file1Value", val1);
+    matchResult.put("file2Value", matched ? matchedVal : "");
+    matchResult.put("matchStatus", matched ? "Matched" : "Not Matched");
+
+    if (matched) matchedCount++;
+    else unmatchedCount++;
+
+    matchResults.add(matchResult);
 }
