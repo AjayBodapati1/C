@@ -1,75 +1,48 @@
-package com.example.desis_to_csv;
-
-import org.springframework.stereotype.Service;
-
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.text.DecimalFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
-
-@Service
-public class S3FileMetadataService {
-
-    public Map<String, String> extractS3FileMetadata() {
-        Map<String, String> metadata = new HashMap<>();
-
-        try {
-            String fileUrl = "https://your-bucket.s3.amazonaws.com/sample.json"; // hardcoded URL
-            URL url = new URL(fileUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("HEAD"); // HEAD request to get metadata only
-
-            // Get content type and size
-            String contentType = conn.getContentType();
-            int fileSizeBytes = conn.getContentLength();
-
-            // Extract filename manually from path
-            String path = url.getPath();
-            String fileName = path.substring(path.lastIndexOf('/') + 1);
-            String entityCode = fileName.length() >= 6 ? fileName.substring(0, 6) : "UNKNOWN";
-
-            // Format file size
-            double fileSizeKB = fileSizeBytes / 1024.0;
-            DecimalFormat df = new DecimalFormat("#.##");
-
-            // Format upload time
-            String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
-            metadata.put("filename", fileName);
-            metadata.put("uploadTime", uploadTime);
-            metadata.put("entityCode", entityCode);
-            metadata.put("fileType", contentType);
-            metadata.put("fileSize", df.format(fileSizeKB) + " KB");
-
-            conn.disconnect();
-        } catch (Exception e) {
-            metadata.put("error", "Failed to fetch metadata: " + e.getMessage());
-        }
-
-        return metadata;
-    }
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f2f2;
+    color: #333;
+    padding: 20px;
+    text-align: center;
 }
 
+h2 {
+    color: #00529B;
+    margin-top: 20px;
+}
 
-package com.example.desis_to_csv;
+a {
+    display: inline-block;
+    margin: 10px;
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+}
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+a:hover {
+    background-color: #45a049;
+}
 
-import java.util.Map;
+form {
+    margin-top: 20px;
+}
 
-@RestController
-public class S3FileMetadataController {
+input[type="file"] {
+    padding: 10px;
+    margin: 10px 0;
+}
 
-    @Autowired
-    private S3FileMetadataService service;
+button {
+    background-color: #008CBA;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
 
-    @GetMapping("/s3-file-metadata")
-    public Map<String, String> getMetadataFromS3() {
-        return service.extractS3FileMetadata();
-    }
+button:hover {
+    background-color: #007B9E;
 }
