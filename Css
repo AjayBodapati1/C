@@ -1,109 +1,66 @@
-package com.example.desis_to_csv.service;
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Upload</title>
+</head>
+<body>
+    <h2>Upload a File (CSV, JSON, XLSX, PDF)</h2>
+    <form method="POST" enctype="multipart/form-data" action="/upload-file">
+        <input type="file" name="file" accept=".csv,.json,.xlsx,.pdf" required />
+        <br><br>
+        <button type="submit">Upload</button>
+    </form>
+</body>
+</html>
+
+package com.example.desis_to_csv;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
+
+@RestController
+public class FileMetadataController {
+
+    @Autowired
+    private FileMetadataService fileMetadataService;
+
+    @PostMapping(value = "/upload-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, String> uploadFile(@RequestParam("file") MultipartFile file) {
+        return fileMetadataService.extractMetadata(file);
+    }
+}
+
+package com.example.desis_to_csv;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.io.*;
-import java.util.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
-public class MatchingService {
+public class FileMetadataService {
 
-    public Map<String, Object> processAndMatchFiles(String file1Path, String file2Path) throws IOException {
-        List<String> file1Values = new ArrayList<>();
-        List<String> file2Values = new ArrayList<>();
-        int excludedCount = 0;
+    public Map<String, String> extractMetadata(MultipartFile file) {
+        Map<String, String> metadata = new HashMap<>();
 
-        // Read file 1 and clean DESIS field 105 (with exclusion based on 820)
-        try (BufferedReader reader = new BufferedReader(new FileReader(file1Path))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) throw new IOException("File 1 is empty");
-            String[] headers = headerLine.split(",");
-            int field105Index = findFieldIndex(headers, "105");
-            int field820Index = findFieldIndex(headers, "820");
+        String filename = file.getOriginalFilename();
+        String fileType = file.getContentType();
+        String entityCode = filename != null && filename.length() >= 6
+                ? filename.substring(0, 6)
+                : "UNKNOWN";
 
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] fields = line.split(",", -1);
+        metadata.put("filename", filename);
+        metadata.put("uploadTime", LocalDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+        metadata.put("entityCode", entityCode);
+        metadata.put("fileType", fileType);
 
-                if (field820Index >= 0 && field820Index < fields.length) {
-                    String field820Val = fields[field820Index].trim();
-                    if (field820Val.equals("ROBSIN") || field820Val.equals("BAIUAMDROB")) {
-                        excludedCount++;
-                        continue;
-                    }
-                }
-
-                if (field105Index >= 0 && field105Index < fields.length) {
-                    String value = fields[field105Index];
-                    value = value.replaceFirst("(?i)^PE@|^LND@", ""); // Clean PE@/LND@
-                    file1Values.add(value.trim());
-                }
-            }
-        }
-
-        // Read file 2 for field 1005
-        try (BufferedReader reader = new BufferedReader(new FileReader(file2Path))) {
-            String headerLine = reader.readLine();
-            if (headerLine == null) throw new IOException("File 2 is empty");
-            String[] headers = headerLine.split(",");
-            int field1005Index = findFieldIndex(headers, "1005");
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] fields = line.split(",", -1);
-                if (field1005Index >= 0 && field1005Index < fields.length) {
-                    file2Values.add(fields[field1005Index].trim());
-                }
-            }
-        }
-
-        // One-to-one matching logic
-        List<Map<String, String>> matchResults = new ArrayList<>();
-        int matchedCount = 0, unmatchedCount = 0;
-
-        List<String> remainingFile2Values = new ArrayList<>(file2Values); // modifiable list
-
-        for (String val1 : file1Values) {
-            boolean matched = false;
-            String matchedVal = "";
-
-            Iterator<String> iterator = remainingFile2Values.iterator();
-            while (iterator.hasNext()) {
-                String val2 = iterator.next();
-                if (val1.equals(val2)) {
-                    matched = true;
-                    matchedVal = val2;
-                    iterator.remove(); // prevent reuse
-                    break;
-                }
-            }
-
-            Map<String, String> matchResult = new HashMap<>();
-            matchResult.put("file1Value", val1);
-            matchResult.put("file2Value", matched ? matchedVal : "");
-            matchResult.put("matchStatus", matched ? "Matched" : "Not Matched");
-
-            if (matched) matchedCount++;
-            else unmatchedCount++;
-
-            matchResults.add(matchResult);
-        }
-
-        // Final output
-        Map<String, Object> output = new HashMap<>();
-        output.put("matchedCount", matchedCount);
-        output.put("unmatchedCount", unmatchedCount);
-        output.put("excludedCount", excludedCount);
-        output.put("results", matchResults);
-        return output;
-    }
-
-    private int findFieldIndex(String[] headers, String targetField) {
-        for (int i = 0; i < headers.length; i++) {
-            if (headers[i].trim().equals(targetField)) {
-                return i;
-            }
-        }
-        return -1;
+        return metadata;
     }
 }
