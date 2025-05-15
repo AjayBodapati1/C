@@ -1,73 +1,47 @@
-package com.example.desis_to_csv;
+public Map<String, String> extractS3FileMetadata() {
+    Map<String, String> metadata = new HashMap<>();
 
-import org.springframework.stereotype.Service;
+    try {
+        String fileUrl = "https://your-bucket.s3.amazonaws.com/sample.json"; // hardcoded
+        URL url = new URL(fileUrl);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
 
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.text.DecimalFormat;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+        // Extract headers
+        int fileSizeBytes = conn.getContentLength();
+        String contentType = conn.getContentType();
 
-@Service
-public class S3FileMetadataService {
+        // Get filename
+        String path = url.getPath();
+        String fileName = path.substring(path.lastIndexOf('/') + 1);
+        String entityCode = fileName.length() >= 6 ? fileName.substring(0, 6) : "UNKNOWN";
 
-    public Map<String, String> extractS3FileMetadata() {
-        Map<String, String> metadata = new HashMap<>();
-
-        try {
-            String fileUrl = "https://your-bucket.s3.amazonaws.com/sample.json"; // hardcoded
-            URL url = new URL(fileUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Range", "bytes=0-0"); // Only get 1 byte to avoid downloading full file
-
-            // Get content type and size
-            String contentType = conn.getContentType();
-            int fileSizeBytes = conn.getContentLength();
-
-            // Extract filename
-            String path = url.getPath();
-            String fileName = path.substring(path.lastIndexOf('/') + 1);
-            String entityCode = fileName.length() >= 6 ? fileName.substring(0, 6) : "UNKNOWN";
-
-            // Fallback for content type
-            if (contentType == null || contentType.isEmpty()) {
-                contentType = getMimeTypeFromExtension(fileName);
-            }
-
-            // Format size
-            double fileSizeKB = fileSizeBytes / 1024.0;
-            String formattedSize = new DecimalFormat("#.##").format(fileSizeKB);
-
-            // Format upload time
-            String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
-            metadata.put("filename", fileName);
-            metadata.put("uploadTime", uploadTime);
-            metadata.put("entityCode", entityCode);
-            metadata.put("fileType", contentType);
-            metadata.put("fileSize", formattedSize + " KB");
-
-            conn.disconnect();
-        } catch (Exception e) {
-            metadata.put("error", "Failed to fetch metadata: " + e.getMessage());
+        // Fallback for content type
+        if (contentType == null || contentType.isEmpty()) {
+            contentType = getMimeTypeFromExtension(fileName);
         }
 
-        return metadata;
+        // File size fallback
+        if (fileSizeBytes <= 0) {
+            // Try reading content size manually
+            fileSizeBytes = conn.getInputStream().readAllBytes().length;
+        }
+
+        // Format file size and time
+        double fileSizeKB = fileSizeBytes / 1024.0;
+        String formattedSize = new DecimalFormat("#.##").format(fileSizeKB);
+        String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
+        metadata.put("filename", fileName);
+        metadata.put("uploadTime", uploadTime);
+        metadata.put("entityCode", entityCode);
+        metadata.put("fileType", contentType);
+        metadata.put("fileSize", formattedSize + " KB");
+
+        conn.disconnect();
+    } catch (Exception e) {
+        metadata.put("error", "Failed to fetch metadata: " + e.getMessage());
     }
 
-    private String getMimeTypeFromExtension(String filename) {
-        String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-        switch (ext) {
-            case "csv": return "text/csv";
-            case "json": return "application/json";
-            case "pdf": return "application/pdf";
-            case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            case "xls": return "application/vnd.ms-excel";
-            case "txt": return "text/plain";
-            default: return "application/octet-stream";
-        }
-    }
+    return metadata;
 }
