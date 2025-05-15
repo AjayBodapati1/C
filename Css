@@ -1,89 +1,49 @@
 package com.example.desis_to_csv;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.text.DecimalFormat;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Service
-public class S3FileMetadataService {
+public class FileMetadataService {
 
-    public Map<String, String> extractS3FileMetadata() {
-        Map<String, String> metadata = new HashMap<>();
+    public Map<String, Object> extractMetadata(MultipartFile file) {
+        Map<String, Object> metadata = new HashMap<>();
 
-        try {
-            String fileUrl = "https://your-bucket.s3.amazonaws.com/sample.json"; // your hardcoded S3 URL
-            URL url = new URL(fileUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET");
+        String filename = file.getOriginalFilename();
+        String fileType = file.getContentType();
+        String entityCode = (filename != null && filename.length() >= 6)
+                ? filename.substring(0, 6)
+                : "UNKNOWN";
 
-            // Don't actually read the file content
-            conn.connect();
+        String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
-            // Get content type and content length from headers
-            String contentType = conn.getContentType();
+        double fileSizeKB = file.getSize() / 1024.0;
+        String formattedSize = String.format("%.2f KB", fileSizeKB);
 
-            // Get size from headers manually
-            int fileSizeBytes = -1;
-            String lengthHeader = conn.getHeaderField("Content-Length");
-            if (lengthHeader != null) {
-                try {
-                    fileSizeBytes = Integer.parseInt(lengthHeader);
-                } catch (NumberFormatException ignored) {}
+        metadata.put("filename", filename);
+        metadata.put("uploadTime", uploadTime);
+        metadata.put("entityCode", entityCode);
+        metadata.put("fileType", fileType);
+        metadata.put("fileSize", formattedSize);
+
+        if (fileType != null && fileType.contains("csv")) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+                String headerLine = reader.readLine();
+                if (headerLine != null) {
+                    List<String> headers = Arrays.asList(headerLine.split(","));
+                    metadata.put("headers", headers);
+                }
+            } catch (Exception e) {
+                metadata.put("csvHeaderError", "Failed to read headers: " + e.getMessage());
             }
-
-            // Fallback: try getContentLength()
-            if (fileSizeBytes <= 0) {
-                fileSizeBytes = conn.getContentLength();
-            }
-
-            // Extract filename and entity code
-            String path = url.getPath();
-            String fileName = path.substring(path.lastIndexOf('/') + 1);
-            String entityCode = fileName.length() >= 6 ? fileName.substring(0, 6) : "UNKNOWN";
-
-            // Fallback for content type
-            if (contentType == null || contentType.isEmpty()) {
-                contentType = getMimeTypeFromExtension(fileName);
-            }
-
-            // Format file size
-            String fileSizeFormatted = (fileSizeBytes > 0)
-                    ? new DecimalFormat("#.##").format(fileSizeBytes / 1024.0) + " KB"
-                    : "Unknown";
-
-            // Format upload time
-            String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
-            metadata.put("filename", fileName);
-            metadata.put("uploadTime", uploadTime);
-            metadata.put("entityCode", entityCode);
-            metadata.put("fileType", contentType);
-            metadata.put("fileSize", fileSizeFormatted);
-
-            conn.disconnect();
-        } catch (Exception e) {
-            metadata.put("error", "Failed to fetch metadata: " + e.getMessage());
         }
 
         return metadata;
-    }
-
-    private String getMimeTypeFromExtension(String filename) {
-        String ext = filename.contains(".") ? filename.substring(filename.lastIndexOf('.') + 1).toLowerCase() : "";
-        switch (ext) {
-            case "csv": return "text/csv";
-            case "json": return "application/json";
-            case "pdf": return "application/pdf";
-            case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            case "xls": return "application/vnd.ms-excel";
-            case "txt": return "text/plain";
-            default: return "application/octet-stream";
-        }
     }
 }
