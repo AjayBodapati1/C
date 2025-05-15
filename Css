@@ -1,48 +1,62 @@
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f2f2f2;
-    color: #333;
-    padding: 20px;
-    text-align: center;
-}
+package com.example.desis_to_csv;
 
-h2 {
-    color: #00529B;
-    margin-top: 20px;
-}
+import org.springframework.stereotype.Service;
 
-a {
-    display: inline-block;
-    margin: 10px;
-    padding: 10px 20px;
-    background-color: #4CAF50;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-}
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.DecimalFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
-a:hover {
-    background-color: #45a049;
-}
+@Service
+public class S3FileMetadataService {
 
-form {
-    margin-top: 20px;
-}
+    public Map<String, Object> extractS3FileMetadata() {
+        Map<String, Object> metadata = new HashMap<>();
 
-input[type="file"] {
-    padding: 10px;
-    margin: 10px 0;
-}
+        try {
+            String fileUrl = "https://your-bucket.s3.amazonaws.com/sample.csv"; // hardcoded S3 URL
+            URL url = new URL(fileUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
 
-button {
-    background-color: #008CBA;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
+            String contentType = conn.getContentType();
+            int fileSizeBytes = conn.getContentLength();
 
-button:hover {
-    background-color: #007B9E;
+            String path = url.getPath();
+            String fileName = path.substring(path.lastIndexOf('/') + 1);
+            String entityCode = fileName.length() >= 6 ? fileName.substring(0, 6) : "UNKNOWN";
+
+            double fileSizeKB = fileSizeBytes / 1024.0;
+            DecimalFormat df = new DecimalFormat("#.##");
+            String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
+            metadata.put("filename", fileName);
+            metadata.put("uploadTime", uploadTime);
+            metadata.put("entityCode", entityCode);
+            metadata.put("fileType", contentType);
+            metadata.put("fileSize", df.format(fileSizeKB) + " KB");
+
+            // If it's a CSV file, read the first line for headers
+            if (fileName.endsWith(".csv")) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
+                    String headerLine = reader.readLine();
+                    if (headerLine != null) {
+                        String[] headers = headerLine.split(",");
+                        metadata.put("headers", headers);
+                    }
+                }
+            }
+
+            conn.disconnect();
+        } catch (Exception e) {
+            metadata.put("error", "Failed to fetch metadata: " + e.getMessage());
+        }
+
+        return metadata;
+    }
 }
