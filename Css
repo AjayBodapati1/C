@@ -5,9 +5,11 @@ import org.springframework.stereotype.Service;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -17,27 +19,33 @@ public class S3FileMetadataService {
         Map<String, String> metadata = new HashMap<>();
 
         try {
-            // 1. Hardcoded S3 URL
             String s3Url = "https://ecs-s3-fr.dev.echonet/FR%20DEVS3_recon/Initial%20Margin%20EOD%202025.csv?response-content-disposition-attachment&AWSAccessKeyId=userdev%20s3%20recon%20nexgen_rw&Signature=zI28u7220MMQNI1XvJ%20Oc4%3D&Expires=1747712";
             URL url = new URL(s3Url);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("HEAD");
 
-            // 2. File type
-            String contentType = conn.getContentType();
-            if (contentType == null || contentType.isBlank()) {
-                contentType = "application/octet-stream";
-            }
-
-            // 3. File name
+            // === File name ===
             String decodedPath = URLDecoder.decode(url.getPath(), "UTF-8");
             String fileName = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
 
-            // 4. Source system from S3 folder name (e.g., "FR DEVS3_recon")
+            // === File type from extension ===
+            String fileType = "unknown";
+            if (fileName.contains(".")) {
+                String ext = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+                switch (ext) {
+                    case "csv": fileType = "CSV File"; break;
+                    case "json": fileType = "JSON File"; break;
+                    case "pdf": fileType = "PDF Document"; break;
+                    case "xlsx": fileType = "Excel Spreadsheet"; break;
+                    default: fileType = ext.toUpperCase() + " File";
+                }
+            }
+
+            // === Source System ===
             String[] pathParts = decodedPath.split("/");
             String sourceSystem = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : "unknown";
 
-            // 5. Uploaded by from AWSAccessKeyId in query string
+            // === Uploaded By ===
             String query = url.getQuery();
             String uploadedBy = "unknown";
             for (String param : query.split("&")) {
@@ -47,20 +55,28 @@ public class S3FileMetadataService {
                 }
             }
 
-            // 6. Timestamp
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+            // === Upload Time from HTTP header ===
+            String uploadTimeRaw = conn.getHeaderField("Last-Modified");
+            String uploadTime = "unknown";
+            if (uploadTimeRaw != null) {
+                try {
+                    ZonedDateTime zdt = ZonedDateTime.parse(uploadTimeRaw, DateTimeFormatter.RFC_1123_DATE_TIME.withLocale(Locale.ENGLISH));
+                    uploadTime = zdt.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+                } catch (DateTimeParseException e) {
+                    uploadTime = "Invalid format";
+                }
+            }
 
             metadata.put("fileName", fileName);
-            metadata.put("fileType", contentType);
+            metadata.put("fileType", fileType);
             metadata.put("sourceSystem", sourceSystem);
             metadata.put("uploadedBy", uploadedBy);
-            metadata.put("timestamp", timestamp);
+            metadata.put("timestamp", uploadTime);
             metadata.put("storagePath", s3Url);
 
             conn.disconnect();
-
         } catch (Exception e) {
-            metadata.put("error", "Error extracting metadata: " + e.getMessage());
+            metadata.put("error", "Failed to read metadata: " + e.getMessage());
         }
 
         return metadata;
