@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -16,59 +17,52 @@ public class S3FileMetadataService {
         Map<String, String> metadata = new HashMap<>();
 
         try {
+            // 1. Hardcoded S3 URL
             String s3Url = "https://ecs-s3-fr.dev.echonet/FR%20DEVS3_recon/Initial%20Margin%20EOD%202025.csv?response-content-disposition-attachment&AWSAccessKeyId=userdev%20s3%20recon%20nexgen_rw&Signature=zI28u7220MMQNI1XvJ%20Oc4%3D&Expires=1747712";
-
             URL url = new URL(s3Url);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("HEAD");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("HEAD");
 
-            String contentType = connection.getContentType();
-            String path = url.getPath();
-            String fileName = path.substring(path.lastIndexOf('/') + 1);
+            // 2. File type
+            String contentType = conn.getContentType();
+            if (contentType == null || contentType.isBlank()) {
+                contentType = "application/octet-stream";
+            }
 
+            // 3. File name
+            String decodedPath = URLDecoder.decode(url.getPath(), "UTF-8");
+            String fileName = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
+
+            // 4. Source system from S3 folder name (e.g., "FR DEVS3_recon")
+            String[] pathParts = decodedPath.split("/");
+            String sourceSystem = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : "unknown";
+
+            // 5. Uploaded by from AWSAccessKeyId in query string
+            String query = url.getQuery();
+            String uploadedBy = "unknown";
+            for (String param : query.split("&")) {
+                if (param.startsWith("AWSAccessKeyId=")) {
+                    uploadedBy = URLDecoder.decode(param.split("=")[1], "UTF-8");
+                    break;
+                }
+            }
+
+            // 6. Timestamp
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
             metadata.put("fileName", fileName);
-            metadata.put("fileType", contentType != null ? contentType : "unknown");
-            metadata.put("sourceSystem", "S3-Recon"); // customize if needed
-            metadata.put("uploadedBy", "SystemUser"); // hardcoded or configurable
+            metadata.put("fileType", contentType);
+            metadata.put("sourceSystem", sourceSystem);
+            metadata.put("uploadedBy", uploadedBy);
             metadata.put("timestamp", timestamp);
             metadata.put("storagePath", s3Url);
 
-            connection.disconnect();
+            conn.disconnect();
+
         } catch (Exception e) {
-            metadata.put("error", "Failed to read metadata: " + e.getMessage());
+            metadata.put("error", "Error extracting metadata: " + e.getMessage());
         }
 
         return metadata;
-    }
-}
-
-
-
-
-
-
-
-==========
-
-
-package com.example.desis_to_csv;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
-
-@RestController
-public class S3FileMetadataController {
-
-    @Autowired
-    private S3FileMetadataService service;
-
-    @GetMapping("/s3-fixed-file-metadata")
-    public Map<String, String> getMetadataFromHardcodedUrl() {
-        return service.fetchMetadataFromS3();
     }
 }
