@@ -2,10 +2,8 @@ package com.example.desis_to_csv;
 
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -14,43 +12,63 @@ import java.util.Map;
 @Service
 public class S3FileMetadataService {
 
-    public Map<String, String> extractS3FileMetadata() {
+    public Map<String, String> fetchMetadataFromS3() {
         Map<String, String> metadata = new HashMap<>();
 
         try {
-            String fileUrl = "https://your-bucket.s3.amazonaws.com/sample.csv"; // Replace with your S3 URL
-            URL url = new URL(fileUrl);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("GET"); // Use GET instead of HEAD
+            String s3Url = "https://ecs-s3-fr.dev.echonet/FR%20DEVS3_recon/Initial%20Margin%20EOD%202025.csv?response-content-disposition-attachment&AWSAccessKeyId=userdev%20s3%20recon%20nexgen_rw&Signature=zI28u7220MMQNI1XvJ%20Oc4%3D&Expires=1747712";
 
-            // Read content type and file size
-            String contentType = conn.getContentType(); // now will be populated
-            int contentLength = conn.getContentLength(); // also now works
+            URL url = new URL(s3Url);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("HEAD");
 
-            // Read minimal bytes to force the connection to resolve metadata
-            try (InputStream is = conn.getInputStream()) {
-                while (is.read() != -1) break; // only trigger stream start
-            }
+            String contentType = connection.getContentType();
+            String path = url.getPath();
+            String fileName = path.substring(path.lastIndexOf('/') + 1);
 
-            String fileName = url.getPath().substring(url.getPath().lastIndexOf('/') + 1);
-            String entityCode = (fileName.length() >= 6) ? fileName.substring(0, 6) : "UNKNOWN";
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
-            double fileSizeKB = contentLength / 1024.0;
-            DecimalFormat df = new DecimalFormat("#.##");
-
-            String uploadTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
-            metadata.put("filename", fileName);
-            metadata.put("uploadTime", uploadTime);
-            metadata.put("entityCode", entityCode);
+            metadata.put("fileName", fileName);
             metadata.put("fileType", contentType != null ? contentType : "unknown");
-            metadata.put("fileSize", df.format(fileSizeKB) + " KB");
+            metadata.put("sourceSystem", "S3-Recon"); // customize if needed
+            metadata.put("uploadedBy", "SystemUser"); // hardcoded or configurable
+            metadata.put("timestamp", timestamp);
+            metadata.put("storagePath", s3Url);
 
-            conn.disconnect();
+            connection.disconnect();
         } catch (Exception e) {
-            metadata.put("error", "Failed to fetch metadata: " + e.getMessage());
+            metadata.put("error", "Failed to read metadata: " + e.getMessage());
         }
 
         return metadata;
+    }
+}
+
+
+
+
+
+
+
+==========
+
+
+package com.example.desis_to_csv;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+
+@RestController
+public class S3FileMetadataController {
+
+    @Autowired
+    private S3FileMetadataService service;
+
+    @GetMapping("/s3-fixed-file-metadata")
+    public Map<String, String> getMetadataFromHardcodedUrl() {
+        return service.fetchMetadataFromS3();
     }
 }
