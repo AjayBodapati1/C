@@ -1,33 +1,57 @@
-package com.example.desis_to_csv.config;
+package com.example.desis_to_csv.service;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
+import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 
-@Configuration
-public class S3Config {
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
-    @Value("${aws.accessKey}")
-    private String accessKey;
+@Service
+public class S3MetadataService {
 
-    @Value("${aws.secretKey}")
-    private String secretKey;
+    private final S3Client s3Client;
 
-    @Value("${aws.region}")
-    private String region;
+    @Value("${aws.bucketName}")
+    private String bucket;
 
-    @Bean
-    public S3Client s3Client() {
-        return S3Client.builder()
-                .region(Region.of(region))
-                .credentialsProvider(
-                        StaticCredentialsProvider.create(
-                                AwsBasicCredentials.create(accessKey, secretKey)
-                        ))
-                .build();
+    @Value("${aws.objectKey}")
+    private String key;
+
+    public S3MetadataService(S3Client s3Client) {
+        this.s3Client = s3Client;
+    }
+
+    public Map<String, String> getMetadata() {
+        Map<String, String> metadata = new HashMap<>();
+        try {
+            HeadObjectRequest request = HeadObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
+
+            HeadObjectResponse response = s3Client.headObject(request);
+
+            String fileName = key.substring(key.lastIndexOf('/') + 1);
+            String sourceSystem = key.contains("/") ? key.substring(0, key.indexOf('/')) : "unknown";
+
+            metadata.put("fileName", fileName);
+            metadata.put("fileType", response.contentType());
+            metadata.put("fileSize", String.valueOf(response.contentLength() / 1024) + " KB");
+            metadata.put("sourceSystem", sourceSystem);
+            metadata.put("uploadedBy", response.metadata().getOrDefault("uploaded-by", "unknown"));
+            metadata.put("timestamp", response.lastModified()
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+            metadata.put("storagePath", "s3://" + bucket + "/" + key);
+
+        } catch (Exception e) {
+            metadata.put("error", "Failed to get metadata: " + e.getMessage());
+        }
+
+        return metadata;
     }
 }
