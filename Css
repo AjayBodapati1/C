@@ -1,67 +1,19 @@
 package com.example.desis_to_csv;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
-import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URLDecoder;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.Map;
 
-@Service
-public class S3MetadataService {
+@RestController
+public class S3MetadataController {
 
-    private final S3Client s3Client;
+    @Autowired
+    private S3MetadataService metadataService;
 
-    @Value("${aws.bucketName}")
-    private String bucketName;
-
-    @Value("${aws.objectKey}")
-    private String objectKey;
-
-    @Value("${aws.uploadedBy}")
-    private String uploadedBy;
-
-    public S3MetadataService(S3Client s3Client) {
-        this.s3Client = s3Client;
-    }
-
-    public Map<String, String> getFileMetadata() {
-        Map<String, String> metadata = new HashMap<>();
-
-        try {
-            HeadObjectRequest headRequest = HeadObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(objectKey)
-                    .build();
-
-            HeadObjectResponse headResponse = s3Client.headObject(headRequest);
-
-            String fileName = URLDecoder.decode(objectKey.substring(objectKey.lastIndexOf("/") + 1), "UTF-8");
-            String sourceSystem = objectKey.contains("/") ?
-                    objectKey.substring(0, objectKey.indexOf("/")) : "unknown";
-
-            String fileType = headResponse.contentType();
-            long fileSizeBytes = headResponse.contentLength();
-
-            String timestamp = headResponse.lastModified()
-                    .atZone(java.time.ZoneId.systemDefault())
-                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
-            metadata.put("fileName", fileName);
-            metadata.put("fileType", fileType);
-            metadata.put("sourceSystem", sourceSystem);
-            metadata.put("uploadedBy", uploadedBy);
-            metadata.put("timestamp", timestamp);
-            metadata.put("storagePath", "s3://" + bucketName + "/" + objectKey);
-
-        } catch (Exception e) {
-            metadata.put("error", "Failed to fetch metadata: " + e.getMessage());
-        }
-
-        return metadata;
+    @GetMapping("/s3-object-metadata")
+    public Map<String, String> getMetadata() {
+        return metadataService.getFileMetadata();
     }
 }
