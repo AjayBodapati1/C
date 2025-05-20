@@ -1,89 +1,55 @@
 package com.example.desis_to_csv;
 
 import com.example.desis_to_csv.model.FileMetadata;
+import com.example.desis_to_csv.repository.FileMetadataRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Service;
 
-@RestController
-public class S3FileMetadataController {
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+@Service
+public class S3FileMetadataService {
 
     @Autowired
-    private S3FileMetadataService service;
+    private FileMetadataRepository repository;
 
-    @GetMapping("/s3/store-metadata")
-    public FileMetadata storeS3FileMetadata() {
-        return service.fetchAndStoreMetadata();
+    public FileMetadata fetchAndSaveMetadataFromS3() {
+        try {
+            String s3Url = "https://ecs-s3-fr.dev.echonet/FR%20DEVS3_recon/Initial%20Margin%20EOD%202025.csv?response-content-disposition-attachment&AWSAccessKeyId=userdev%20s3%20recon%20nexgen_rw&Signature=zI28u7220MMQNI1XvJ%20Oc4%3D&Expires=1747712";
+
+            URL url = new URL(s3Url);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("HEAD");
+
+            String contentType = conn.getContentType();
+            contentType = (contentType == null || contentType.isBlank()) ? "application/octet-stream" : contentType;
+
+            String decodedPath = URLDecoder.decode(url.getPath(), "UTF-8");
+            String fileName = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
+            String[] pathParts = decodedPath.split("/");
+            String sourceSystem = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : "unknown";
+
+            String query = url.getQuery();
+            String uploadedBy = "unknown";
+            for (String param : query.split("&")) {
+                if (param.startsWith("AWSAccessKeyId=")) {
+                    uploadedBy = URLDecoder.decode(param.split("=")[1], "UTF-8");
+                    break;
+                }
+            }
+
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
+            FileMetadata metadata = new FileMetadata(fileName, contentType, sourceSystem, uploadedBy, timestamp, s3Url);
+            return repository.save(metadata);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
-}
-
-
-
-
-
-
-
-
-package com.example.desis_to_csv.model;
-
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
-@Document(collection = "file_metadata")
-public class FileMetadata {
-
-    @Id
-    private String id;
-
-    private String fileName;
-    private String fileType;
-    private String sourceSystem;
-    private String uploadedBy;
-    private String timestamp;
-    private String storagePath;
-
-    public FileMetadata() {}
-
-    public FileMetadata(String fileName, String fileType, String sourceSystem,
-                        String uploadedBy, String timestamp, String storagePath) {
-        this.fileName = fileName;
-        this.fileType = fileType;
-        this.sourceSystem = sourceSystem;
-        this.uploadedBy = uploadedBy;
-        this.timestamp = timestamp;
-        this.storagePath = storagePath;
-    }
-
-    // Getters and Setters
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
-    public String getFileName() { return fileName; }
-    public void setFileName(String fileName) { this.fileName = fileName; }
-
-    public String getFileType() { return fileType; }
-    public void setFileType(String fileType) { this.fileType = fileType; }
-
-    public String getSourceSystem() { return sourceSystem; }
-    public void setSourceSystem(String sourceSystem) { this.sourceSystem = sourceSystem; }
-
-    public String getUploadedBy() { return uploadedBy; }
-    public void setUploadedBy(String uploadedBy) { this.uploadedBy = uploadedBy; }
-
-    public String getTimestamp() { return timestamp; }
-    public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
-
-    public String getStoragePath() { return storagePath; }
-    public void setStoragePath(String storagePath) { this.storagePath = storagePath; }
-}
-
-
-
-
-package com.example.desis_to_csv.repository;
-
-import com.example.desis_to_csv.model.FileMetadata;
-import org.springframework.data.mongodb.repository.MongoRepository;
-
-public interface FileMetadataRepository extends MongoRepository<FileMetadata, String> {
 }
