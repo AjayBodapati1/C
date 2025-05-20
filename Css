@@ -1,62 +1,14 @@
-package com.example.desis_to_csv;
+@RestController
+public class S3MetadataController {
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
+    private final S3MetadataService metadataService;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
+    public S3MetadataController(S3MetadataService metadataService) {
+        this.metadataService = metadataService;
+    }
 
-@Service
-public class S3MetadataService {
-
-    @Value("${s3.fileEndpoint}")
-    private String fileEndpoint;
-
-    public Map<String, String> getFileMetadata() {
-        Map<String, String> metadata = new HashMap<>();
-
-        try {
-            URL url = new URL(fileEndpoint);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("HEAD");
-
-            // 1. File Name from URL
-            String decodedPath = URLDecoder.decode(url.getPath(), "UTF-8");
-            String fileName = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
-
-            // 2. File Type from HTTP header
-            String fileType = conn.getContentType();
-            if (fileType == null || fileType.isBlank()) {
-                fileType = "application/octet-stream";
-            }
-
-            // 3. Source System from folder path (1 level before filename)
-            String[] pathParts = decodedPath.split("/");
-            String sourceSystem = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : "unknown";
-
-            // 4. File Size
-            long fileSize = conn.getContentLengthLong();
-
-            // 5. Timestamp
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
-            metadata.put("fileName", fileName);
-            metadata.put("fileType", fileType);
-            metadata.put("sourceSystem", sourceSystem);
-            metadata.put("fileSize", fileSize + " bytes");
-            metadata.put("timestamp", timestamp);
-            metadata.put("storagePath", fileEndpoint);
-
-            conn.disconnect();
-        } catch (Exception e) {
-            metadata.put("error", "Error fetching metadata: " + e.getMessage());
-        }
-
-        return metadata;
+    @GetMapping("/s3-file-metadata")
+    public Map<String, String> getMetadata() {
+        return metadataService.getFileMetadata();
     }
 }
