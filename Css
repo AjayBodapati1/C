@@ -1,49 +1,21 @@
-@Service
-public class S3FileMetadataService {
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-    @Value("${s3.file.url}")
-    private String s3Url;
+@RestController
+public class S3FileMetadataController {
 
     @Autowired
-    private FileMetadataRepository repository;
+    private S3FileMetadataService s3FileMetadataService;
 
-    public FileMetadata fetchAndSaveMetadataFromS3() {
-        try {
-            URL url = new URL(s3Url);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("HEAD");
-
-            String contentType = conn.getContentType();
-            contentType = (contentType == null || contentType.isBlank()) ? "application/octet-stream" : contentType;
-
-            String decodedPath = URLDecoder.decode(url.getPath(), "UTF-8");
-            String fileName = decodedPath.substring(decodedPath.lastIndexOf('/') + 1);
-            String[] pathParts = decodedPath.split("/");
-            String sourceSystem = pathParts.length >= 2 ? pathParts[pathParts.length - 2] : "unknown";
-
-            String query = url.getQuery();
-            String uploadedBy = "unknown";
-            for (String param : query.split("&")) {
-                if (param.startsWith("AWSAccessKeyId=")) {
-                    uploadedBy = URLDecoder.decode(param.split("=")[1], "UTF-8");
-                    break;
-                }
-            }
-
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-
-            // Check for existing file by storagePath
-            if (repository.findByStoragePath(s3Url).isPresent()) {
-                System.out.println("File metadata already exists. Skipping insert.");
-                return null;
-            }
-
-            FileMetadata metadata = new FileMetadata(fileName, contentType, sourceSystem, uploadedBy, timestamp, s3Url);
-            return repository.save(metadata);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+    @GetMapping("/s3/save-metadata")
+    public ResponseEntity<?> saveMetadataFromS3() {
+        FileMetadata metadata = s3FileMetadataService.fetchAndSaveMetadataFromS3();
+        if (metadata == null) {
+            return ResponseEntity.ok("File metadata already exists. Skipping insert.");
+        } else {
+            return ResponseEntity.ok(metadata);
         }
     }
 }
