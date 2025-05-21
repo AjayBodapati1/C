@@ -1,7 +1,3 @@
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-// other imports...
-
 @Service
 public class S3FileMetadataService {
 
@@ -35,6 +31,12 @@ public class S3FileMetadataService {
             }
 
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+
+            // Check for existing file by storagePath
+            if (repository.findByStoragePath(s3Url).isPresent()) {
+                System.out.println("File metadata already exists. Skipping insert.");
+                return null;
+            }
 
             FileMetadata metadata = new FileMetadata(fileName, contentType, sourceSystem, uploadedBy, timestamp, s3Url);
             return repository.save(metadata);
