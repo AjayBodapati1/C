@@ -1,26 +1,18 @@
-package com.example.desis_to_csv;
-
-import com.example.desis_to_csv.model.FileMetadata;
-import com.example.desis_to_csv.repository.FileMetadataRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+// other imports...
 
 @Service
 public class S3FileMetadataService {
+
+    @Value("${s3.file.url}")
+    private String s3Url;
 
     @Autowired
     private FileMetadataRepository repository;
 
     public FileMetadata fetchAndSaveMetadataFromS3() {
         try {
-            String s3Url = "https://ecs-s3-fr.dev.echonet/FR%20DEVS3_recon/Initial%20Margin%20EOD%202025.csv?response-content-disposition-attachment&AWSAccessKeyId=userdev%20s3%20recon%20nexgen_rw&Signature=zI28u7220MMQNI1XvJ%20Oc4%3D&Expires=1747712";
-
             URL url = new URL(s3Url);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("HEAD");
