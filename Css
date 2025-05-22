@@ -1,108 +1,11 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>File Upload</title>
-</head>
-<body>
-<h2>Upload File</h2>
-<form method="POST" enctype="multipart/form-data" action="/upload">
-    <input type="file" name="file"/>
-    <button type="submit">Upload</button>
-</form>
-</body>
-</html>
+package com.example.fileupload;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@Entity
-public class FileEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String fileName;
-    private String fileType;
-
-    @Lob
-    private byte[] data;
-
-    // Getters and Setters
-}
-
-
-
-
-@Document(collection = "file_metadata")
-public class FileMetadata {
-    @Id
-    private String id;
-    private String fileName;
-    private String fileType;
-    private long size;
-    private LocalDateTime uploadTime;
-    private String storagePath;
-
-    // Getters and Setters
-}
-
-
-public interface FileRepository extends JpaRepository<FileEntity, Long> {
-}
-
-
-public interface FileMetadataRepository extends MongoRepository<FileMetadata, String> {
-}
-
-
-
-@Controller
-public class FileUploadController {
-
-    @Autowired
-    private FileStorageService fileStorageService;
-
-    @GetMapping("/")
-    public String home() {
-        return "upload";
-    }
-
-    @PostMapping("/upload")
-    public String uploadFile(@RequestParam("file") MultipartFile file) {
-        try {
-            fileStorageService.storeFile(file);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "redirect:/";
-    }
-}
-
-
-
-@Service
-public class FileService {
-
-    @Autowired
-    private FileRepository fileRepository; // OracleDB
-
-    @Autowired
-    private FileMetadataRepository metadataRepository; // MongoDB
-
-    public void uploadFile(MultipartFile file) throws IOException {
-        // Save file binary to OracleDB
-        FileEntity fileEntity = new FileEntity();
-        fileEntity.setFileName(file.getOriginalFilename());
-        fileEntity.setFileType(file.getContentType());
-        fileEntity.setData(file.getBytes());
-        fileRepository.save(fileEntity);
-
-        // Save metadata to MongoDB
-        FileMetadata metadata = new FileMetadata();
-        metadata.setFileName(file.getOriginalFilename());
-        metadata.setFileType(file.getContentType());
-        metadata.setSize(file.getSize());
-        metadata.setUploadTime(LocalDateTime.now());
-        metadata.setStoragePath("oracle:file_entity_id=" + fileEntity.getId());
-
-        metadataRepository.save(metadata);
+@SpringBootApplication
+public class FileUploadApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(FileUploadApplication.class, args);
     }
 }
