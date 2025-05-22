@@ -1,66 +1,18 @@
-package com.example.lom.model;
+@Controller
+public class FileUploadController {
 
-import jakarta.persistence.*;
-
-@Entity
-@Table(name = "file_entity")
-public class FileEntity {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "file_seq")
-    @SequenceGenerator(name = "file_seq", sequenceName = "file_sequence", allocationSize = 1)
-    private Long id;
-
-    @Column(name = "file_name")
-    private String fileName;
-
-    @Column(name = "file_type")
-    private String fileType;
-
-    @Lob
-    @Column(name = "file_data")
-    private byte[] data;
-
-    // Constructors
-    public FileEntity() {}
-
-    public FileEntity(String fileName, String fileType, byte[] data) {
-        this.fileName = fileName;
-        this.fileType = fileType;
-        this.data = data;
+    @GetMapping("/")
+    public String redirectToUpload() {
+        return "redirect:/upload.html"; // redirect to static HTML
     }
 
-    // Getters and Setters
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getFileName() {
-        return fileName;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    public String getFileType() {
-        return fileType;
-    }
-
-    public void setFileType(String fileType) {
-        this.fileType = fileType;
-    }
-
-    public byte[] getData() {
-        return data;
-    }
-
-    public void setData(byte[] data) {
-        this.data = data;
+    @PostMapping("/upload")
+    public String handleUpload(@RequestParam("file") MultipartFile file) {
+        try {
+            fileService.uploadFile(file);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "redirect:/upload.html";
     }
 }
