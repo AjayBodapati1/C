@@ -1,84 +1,114 @@
-import { NgModule } from '@angular/core';
-import { BrowserModule } from '@angular/platform-browser';
+import { Component, EventEmitter, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 
-import { AppComponent } from './app.component';
-import { CalendarComponent } from './calendar/calendar.component';
-
-@NgModule({
-  declarations: [
-    AppComponent,
-    CalendarComponent
-  ],
-  imports: [
-    BrowserModule,
-    FormsModule,
-    HttpClientModule
-  ],
-  providers: [],
-  bootstrap: [AppComponent]
+@Component({
+  selector: 'app-create-event',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './create-event.component.html',
+  styleUrls: ['./create-event.component.css']
 })
-export class AppModule { }
+export class CreateEventComponent {
+  @Output() close = new EventEmitter<void>();
+  @Output() created = new EventEmitter<void>();
 
+  newEvent = { title: '' };
+
+  constructor(private http: HttpClient) {}
+
+  submit() {
+    if (!this.newEvent.title.trim()) return;
+    this.http.post('http://localhost:8080/api/events', this.newEvent)
+      .subscribe(() => {
+        this.created.emit(); // notify parent
+        this.close.emit();   // close modal
+      });
+  }
+
+  cancel() {
+    this.close.emit();
+  }
+}
+
+
+
+
+
+
+
+<div class="popup-overlay">
+  <div class="popup-form">
+    <h2>Create Event</h2>
+    <input [(ngModel)]="newEvent.title" placeholder="Event Title" />
+    <br />
+    <button (click)="submit()">Create</button>
+    <button (click)="cancel()">Cancel</button>
+  </div>
+</div>
+
+
+
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popup-form {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 300px;
+}
 
 
 
 import { Component } from '@angular/core';
-
-@Component({
-  selector: 'app-root',
-  template: '<app-calendar></app-calendar>'
-})
-export class AppComponent {}
-
-
-
-import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-
-interface Event {
-  id?: number;
-  title: string;
-}
+import { CreateEventComponent } from '../create-event/create-event.component';
 
 @Component({
   selector: 'app-calendar',
-  templateUrl: './calendar.component.html',
+  standalone: true,
+  imports: [CommonModule, FormsModule, CreateEventComponent],
+  templateUrl: './calendar.component.html'
 })
-export class CalendarComponent implements OnInit {
-  events: Event[] = [];
-  newEvent: Event = { title: '' };
+export class CalendarComponent {
+  showPopup = false;
+  events: { id?: number, title: string }[] = [];
 
   constructor(private http: HttpClient) {}
 
-  ngOnInit(): void {
-    this.getEvents();
+  ngOnInit() {
+    this.loadEvents();
   }
 
-  getEvents() {
-    this.http.get<Event[]>('http://localhost:8080/api/events')
-      .subscribe(data => this.events = data);
-  }
-
-  createEvent() {
-    if (!this.newEvent.title) return;
-    this.http.post<Event>('http://localhost:8080/api/events', this.newEvent)
-      .subscribe(() => {
-        this.newEvent = { title: '' };
-        this.getEvents();
-      });
+  loadEvents() {
+    this.http.get<any[]>('http://localhost:8080/api/events')
+      .subscribe(events => this.events = events);
   }
 }
 
 
-<h2>Create Calendar Event</h2>
-<input [(ngModel)]="newEvent.title" placeholder="Event Title" />
-<button (click)="createEvent()">Create</button>
 
-<h3>Event List</h3>
+<button (click)="showPopup = true">Create Event</button>
+
+<app-create-event
+  *ngIf="showPopup"
+  (close)="showPopup = false"
+  (created)="loadEvents()">
+</app-create-event>
+
 <ul>
-  <li *ngFor="let event of events">
-    {{ event.title }}
-  </li>
+  <li *ngFor="let event of events">{{ event.title }}</li>
 </ul>
