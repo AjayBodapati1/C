@@ -1,18 +1,59 @@
-@Controller
-public class FileUploadController {
+import { HttpClientModule } from '@angular/common/http';
 
-    @GetMapping("/")
-    public String redirectToUpload() {
-        return "redirect:/upload.html"; // redirect to static HTML
-    }
+@NgModule({
+  imports: [BrowserModule, HttpClientModule],
+})
+export class AppModule {}
 
-    @PostMapping("/upload")
-    public String handleUpload(@RequestParam("file") MultipartFile file) {
-        try {
-            fileService.uploadFile(file);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return "redirect:/upload.html";
-    }
+
+
+import { Component, OnInit } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+interface Event {
+  id?: number;
+  title: string;
+  date: string;
 }
+
+@Component({
+  selector: 'app-calendar',
+  templateUrl: './calendar.component.html',
+})
+export class CalendarComponent implements OnInit {
+  events: Event[] = [];
+  newEvent: Event = { title: '', date: '' };
+
+  constructor(private http: HttpClient) {}
+
+  ngOnInit() {
+    this.getEvents();
+  }
+
+  getEvents() {
+    this.http.get<Event[]>('http://localhost:8080/api/events').subscribe(data => {
+      this.events = data;
+    });
+  }
+
+  createEvent() {
+    if (!this.newEvent.title || !this.newEvent.date) return;
+    this.http.post<Event>('http://localhost:8080/api/events', this.newEvent).subscribe(() => {
+      this.newEvent = { title: '', date: '' };
+      this.getEvents();
+    });
+  }
+}
+
+
+<h2>Create Calendar Event</h2>
+<input [(ngModel)]="newEvent.title" placeholder="Event Title" />
+<input [(ngModel)]="newEvent.date" type="date" />
+<button (click)="createEvent()">Create</button>
+
+<h3>Event List</h3>
+<ul>
+  <li *ngFor="let event of events">
+    {{ event.date }} - {{ event.title }}
+  </li>
+</ul>
