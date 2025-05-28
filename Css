@@ -1,73 +1,21 @@
-import { Component, EventEmitter, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+<!-- CREATE BUTTON -->
+<button (click)="openForm()" class="btn btn-primary">Create</button>
 
-@Component({
-  selector: 'app-create-event',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './create-event.component.html',
-  styleUrls: ['./create-event.component.css']
-})
-export class CreateEventComponent {
-  @Output() close = new EventEmitter<void>();
-  @Output() created = new EventEmitter<void>();
+<!-- POPUP FORM (Simple modal) -->
+<div class="modal-overlay" *ngIf="showForm">
+  <div class="modal-content">
+    <h3>Create New Event</h3>
+    <form (ngSubmit)="saveEvent()">
+      <label for="name">Name:</label>
+      <input type="text" [(ngModel)]="newEvent.name" name="name" required />
 
-  newEvent = { title: '' };
-
-  constructor(private http: HttpClient) {}
-
-  submit() {
-    if (!this.newEvent.title.trim()) return;
-    this.http.post('http://localhost:8080/api/events', this.newEvent)
-      .subscribe(() => {
-        this.created.emit(); // notify parent
-        this.close.emit();   // close modal
-      });
-  }
-
-  cancel() {
-    this.close.emit();
-  }
-}
-
-
-
-
-
-
-
-<div class="popup-overlay">
-  <div class="popup-form">
-    <h2>Create Event</h2>
-    <input [(ngModel)]="newEvent.title" placeholder="Event Title" />
-    <br />
-    <button (click)="submit()">Create</button>
-    <button (click)="cancel()">Cancel</button>
+      <div class="modal-actions">
+        <button type="submit" class="btn btn-success">Save</button>
+        <button type="button" (click)="closeForm()" class="btn btn-secondary">Cancel</button>
+      </div>
+    </form>
   </div>
 </div>
-
-
-
-.popup-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.popup-form {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  min-width: 300px;
-}
 
 
 
@@ -75,40 +23,80 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { CreateEventComponent } from '../create-event/create-event.component';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, FormsModule, CreateEventComponent],
-  templateUrl: './calendar.component.html'
+  imports: [CommonModule, FormsModule],
+  templateUrl: './calendar.component.html',
+  styleUrls: ['./calendar.component.css'] // optional
 })
 export class CalendarComponent {
-  showPopup = false;
-  events: { id?: number, title: string }[] = [];
+  showForm = false;
+
+  newEvent = { name: '' };
+  events: any[] = [];
 
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
-    this.loadEvents();
+    this.getEvents();
   }
 
-  loadEvents() {
+  getEvents() {
     this.http.get<any[]>('http://localhost:8080/api/events')
       .subscribe(events => this.events = events);
+  }
+
+  openForm() {
+    this.showForm = true;
+  }
+
+  closeForm() {
+    this.showForm = false;
+    this.newEvent = { name: '' };
+  }
+
+  saveEvent() {
+    if (!this.newEvent.name) return;
+    this.http.post('http://localhost:8080/api/events', this.newEvent)
+      .subscribe(() => {
+        this.closeForm();
+        this.getEvents(); // refresh list
+      });
   }
 }
 
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
 
-<button (click)="showPopup = true">Create Event</button>
+.modal-content {
+  background-color: #fff;
+  padding: 2rem;
+  border-radius: 10px;
+  width: 300px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
 
-<app-create-event
-  *ngIf="showPopup"
-  (close)="showPopup = false"
-  (created)="loadEvents()">
-</app-create-event>
+.modal-actions {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+}
 
-<ul>
-  <li *ngFor="let event of events">{{ event.title }}</li>
-</ul>
+input[type="text"] {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
