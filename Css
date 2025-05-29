@@ -1,52 +1,35 @@
-<!-- CREATE BUTTON -->
-<button (click)="openForm()" class="btn btn-primary">Create</button>
+<button (click)="openForm()">Create</button>
 
-<!-- POPUP FORM (Simple modal) -->
-<div class="modal-overlay" *ngIf="showForm">
+<!-- Popup container -->
+<div class="modal" *ngIf="showForm">
   <div class="modal-content">
-    <h3>Create New Event</h3>
-    <form (ngSubmit)="saveEvent()">
-      <label for="name">Name:</label>
-      <input type="text" [(ngModel)]="newEvent.name" name="name" required />
-
-      <div class="modal-actions">
-        <button type="submit" class="btn btn-success">Save</button>
-        <button type="button" (click)="closeForm()" class="btn btn-secondary">Cancel</button>
-      </div>
-    </form>
+    <app-form (saved)="onFormSaved($event)" (cancel)="closeForm()"></app-form>
   </div>
 </div>
 
+/* Add to styles.css or home.component.css */
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex; align-items: center; justify-content: center;
+}
 
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+}
 
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 
 @Component({
-  selector: 'app-calendar',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './calendar.component.html',
-  styleUrls: ['./calendar.component.css'] // optional
+  selector: 'app-home',
+  templateUrl: './home.component.html'
 })
-export class CalendarComponent {
+export class HomeComponent {
   showForm = false;
-
-  newEvent = { name: '' };
-  events: any[] = [];
-
-  constructor(private http: HttpClient) {}
-
-  ngOnInit() {
-    this.getEvents();
-  }
-
-  getEvents() {
-    this.http.get<any[]>('http://localhost:8080/api/events')
-      .subscribe(events => this.events = events);
-  }
 
   openForm() {
     this.showForm = true;
@@ -54,49 +37,49 @@ export class CalendarComponent {
 
   closeForm() {
     this.showForm = false;
-    this.newEvent = { name: '' };
   }
 
-  saveEvent() {
-    if (!this.newEvent.name) return;
-    this.http.post('http://localhost:8080/api/events', this.newEvent)
-      .subscribe(() => {
-        this.closeForm();
-        this.getEvents(); // refresh list
-      });
+  onFormSaved(name: string) {
+    console.log('Form saved with name:', name);
+    this.closeForm();  // Hide popup after save
   }
 }
 
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 999;
+
+import { Component, EventEmitter, Output } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+
+@Component({
+  selector: 'app-form',
+  standalone: true,
+  imports: [],
+  templateUrl: './form.component.html'
+})
+export class FormComponent {
+  name: string = '';
+
+  @Output() saved = new EventEmitter<string>();
+  @Output() cancel = new EventEmitter<void>();
+
+  constructor(private http: HttpClient) {}
+
+  save() {
+    if (!this.name) return;
+
+    this.http.post('http://localhost:8080/api/events', { title: this.name }).subscribe(() => {
+      this.saved.emit(this.name);
+    });
+  }
+
+  cancelForm() {
+    this.cancel.emit();
+  }
 }
 
-.modal-content {
-  background-color: #fff;
-  padding: 2rem;
-  border-radius: 10px;
-  width: 300px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-}
 
-.modal-actions {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: space-between;
-}
-
-input[type="text"] {
-  width: 100%;
-  padding: 0.5rem;
-  margin-top: 0.5rem;
-}
+<h3>Create New Event</h3>
+<input [(ngModel)]="name" placeholder="Enter Name" />
+<br />
+<button (click)="save()">Save</button>
+<button (click)="cancelForm()">Cancel</button>
