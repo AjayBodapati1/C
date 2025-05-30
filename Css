@@ -1,47 +1,63 @@
-<table class="event-table">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Title</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let event of events">
-      <td>{{ event.id }}</td>
-      <td>{{ event.title }}</td>
-    </tr>
-  </tbody>
-</table>
+import { Component, Inject } from '@angular/core';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+@Component({
+  selector: 'app-confirm-dialog',
+  templateUrl: './confirm-dialog.component.html',
+})
+export class ConfirmDialogComponent {
+  constructor(
+    public dialogRef: MatDialogRef<ConfirmDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: { message: string }
+  ) {}
 
-.event-table {
-  width: 80%;
-  margin: 20px auto;
-  border-collapse: collapse;
-  font-family: Arial, sans-serif;
-  font-size: 16px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  onConfirm(): void {
+    this.dialogRef.close(true);
+  }
+
+  onCancel(): void {
+    this.dialogRef.close(false);
+  }
 }
 
-.event-table th,
-.event-table td {
-  border: 1px solid #ddd;
-  padding: 12px 15px;
-  text-align: left;
+
+
+<h2 mat-dialog-title>Confirm</h2>
+<mat-dialog-content>{{ data.message }}</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="warn" (click)="onConfirm()">Delete</button>
+</mat-dialog-actions>
+
+
+
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component'; // adjust path if needed
+
+constructor(private dialog: MatDialog, private eventService: EventsService) {}
+
+deleteEvent(id: number): void {
+  const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+    data: {
+      message: 'Are you sure you want to delete this event?'
+    }
+  });
+
+  dialogRef.afterClosed().subscribe(result => {
+    if (result) {
+      // Call delete API or remove item
+      console.log('Deleting event with ID:', id);
+      // this.eventService.deleteEvent(id).subscribe(...);
+    }
+  });
 }
 
-.event-table th {
-  background-color: #4CAF50;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
-.event-table tr:nth-child(even) {
-  background-color: #f9f9f9;
-}
-
-.event-table tr:hover {
-  background-color: #f1f1f1;
-  cursor: pointer;
-}
+<tr *ngFor="let event of events">
+  <td>
+    <button mat-icon-button mat-fab class="option-button" aria-label="Delete" (click)="deleteEvent(event.id)">
+      <mat-icon>delete</mat-icon>
+    </button>
+  </td>
+  <td>{{ event.title }}</td>
+</tr>
