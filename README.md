@@ -1,3 +1,2 @@
 These are simple C codes for Number Guessing and Tic-Tac-Toe games.
-
-![BNP Logo](https://raw.githubusercontent.com/username/repo/main/bnp-logo.png)
+![PULSE](https://github.com/user-attachments/assets/6f07f0b9-f618-449a-bd7f-a3ee3e67a7dd)
