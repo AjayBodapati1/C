@@ -1,2 +1,4 @@
 These are simple C codes for Number Guessing and Tic-Tac-Toe games.
 ![PULSE](https://github.com/user-attachments/assets/6f07f0b9-f618-449a-bd7f-a3ee3e67a7dd)
+
+I worked with Nethri on a couple of academic and project-based collaborations, and she has consistently shown enthusiasm and commitment to learn. Even as a new member of the team, I could tell she had a good grasp of the technical concepts we discussed, and more importantly, she exhibited a curiosity to explore new ideas. She quickly learns new technologies, can work effectively in teams, and communicates her thought processes clearly. Nethri approaches every task with energy and positivity as well. I am quite confident that with her passion and development mindset, Nethri will be on her way to become an impactful contributor to any team she becomes part of.
